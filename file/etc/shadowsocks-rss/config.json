@@ -10,3 +10,15 @@
     "obfs_param": "",
     "fast_open": false
 }
+{
+    "server": "173.232.10.43",
+    "server_port": 2547,
+    "password": "VxFu5W76Y8GiHa",
+    "method": "chacha20-ietf",
+    "timeout": 120,
+    "protocol": "auth_sha1",
+    "protocol_param": "",
+    "obfs": "http_simple",
+    "obfs_param": "",
+    "fast_open": false	
+}

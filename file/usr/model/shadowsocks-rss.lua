@@ -5,7 +5,7 @@
 local fs = require "nixio.fs"
 
 local state_msg = ""
-local ss_redir_on = (luci.sys.call("pidof ssr-server > /dev/null") == 0)
+local ss_redir_on = (luci.sys.call("pidof ssr-redir > /dev/null") == 0)
 if ss_redir_on then	
 	state_msg = "<b><font color=\"green\">" .. translate("Running") .. "</font></b>"
 else
@@ -115,7 +115,6 @@ obfs_param = basic:taboption("general", Value, "obfs_param", translate("obfs_par
 obfs_param:value("youku.com,sohu.com,bilibili.com")
 obfs_param.default = "youku.com,sohu.com,bilibili.com"
 obfs_param:depends("obfs", "http_simple")
-obfs_param.rmempty = false
 
 timeout = basic:taboption("general", Value, "timeout", translate("timeout"))
 timeout:value("30")
@@ -146,16 +145,17 @@ tunnel_port.default = "5353"
 tunnel_port.datatype = "port"
 tunnel_port:depends("dns_server", "T")
 
-dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("DNS Address"), translate("Tunnel Listening DNS Address (IP#port)"))
-dns_server_addr:value("8.8.8.8#53")
-dns_server_addr:value("8.8.4.4#53")
-dns_server_addr:value("208.67.220.220#443")
-dns_server_addr:value("208.67.222.222#5353")
-dns_server_addr.default = "8.8.8.8#53"
+dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("DNS Address"), translate("Tunnel Listening DNS Address (IP:port)"))
+dns_server_addr:value("8.8.8.8:53")
+dns_server_addr:value("8.8.4.4:53")
+dns_server_addr:value("208.67.220.220:443")
+dns_server_addr:value("208.67.222.222:5353")
+dns_server_addr.default = "8.8.8.8:53"
 dns_server_addr:depends("dns_server", "T")
 
 other_dns_overall = basic:taboption("dns_page", Flag, "other_dns_overall", translate("Overall Upstream DNS"), translate("All request will handed over to the DNS set below. "))
-other_dns_overall.rmempty = false
+other_dns_overall.default = "0"
+other_dns_overall:depends("dns_server", "O")
 
 other_dns = basic:taboption("dns_page", Value, "other_dns", translate("Other DNS Server"), translate("Default:Only the domain mach GFWList will be handed over to the DNS set above. IP#port"))
 other_dns:value("127.0.0.1#1053")
@@ -287,21 +287,21 @@ gfwlist.template = "cbi/tvalue"
 gfwlist.rows = 25
 
 function gfwlist.cfgvalue(self, section)
-	return nixio.fs.readfile("/etc/shadowsocks-rss/gfwlist/china_forbidden")
+	return nixio.fs.readfile("/etc/shadowsocks-rss/list/UserList")
 end
 
 function gfwlist.write(self, section, value)
 	value = value:gsub("\r\n?", "\n")
-	nixio.fs.writefile("//etc/shadowsocks-rss/gfwlist/china_forbidden", value)
+	nixio.fs.writefile("//etc/shadowsocks-rss/list/UserList", value)
 end
 
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
 
--- local apply = luci.http.formvalue("cbi.apply")
--- if apply then
-	-- io.popen("/etc/init.d/pcap_dnsproxy restart")
--- end
+local apply = luci.http.formvalue("cbi.apply")
+if apply then
+	io.popen("/etc/init.d/shadowsocks-rss.sh restart")
+end
 
 
 
