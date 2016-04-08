@@ -62,7 +62,7 @@ define Package/luci-app-shadowsocks-rss/install
 	$(INSTALL_BIN) ./files/etc/init.d/shadowsocks-rss.sh $(1)/etc/init.d/shadowsocks-rss.sh
 	
 	$(INSTALL_DIR) $(1)/etc/shadowsocks-rss/list
-	$(INSTALL_DATA) ./files/etc/shadowsocks-rss/list/BypassList $(1)/etc/shadowsocks-rss/list/config
+	$(INSTALL_DATA) ./files/etc/shadowsocks-rss/list/BypassList $(1)/etc/shadowsocks-rss/list/BypassList
 	$(INSTALL_DATA) ./files/etc/shadowsocks-rss/list/ChinaList $(1)/etc/shadowsocks-rss/list/ChinaList
 	$(INSTALL_DATA) ./files/etc/shadowsocks-rss/list/GFWList $(1)/etc/shadowsocks-rss/list/GFWList
 	$(INSTALL_DATA) ./files/etc/shadowsocks-rss/list/UserList $(1)/etc/shadowsocks-rss/list/UserList
