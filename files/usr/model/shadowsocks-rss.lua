@@ -38,7 +38,7 @@ fast_open.rmempty = false
 
 proxy_mod = basic:taboption("general", ListValue, "proxy_mod", translate("Proxy Mod"))
 proxy_mod:value("G", "GFW List")
-proxy_mod:value("C", "ALL the IP address not China")
+proxy_mod:value("C", "Other Than China")
 proxy_mod:value("A", "All Public IP address")
 proxy_mod.default = "G"
 proxy_mod.rmempty = false

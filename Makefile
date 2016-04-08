@@ -40,14 +40,17 @@ endef
 define Package/luci-app-shadowsocks-rss/postinst
 #!/bin/sh
 	/etc/init.d/shadowsocks-rss.sh enable
-	[ -e /etc/init.d/pcap-dnsproxy ] && /etc/init.d/pcap-dnsproxy disable
+	[ -e /etc/init.d/shadowsocksr ] && /etc/init.d/shadowsocksr disable
+	[ -e /etc/init.d/shadowsocks ] && /etc/init.d/shadowsocks disable
+	/etc/init.d/shadowsocks-rss.sh help
 exit 0
 endef
 
 define Package/luci-app-shadowsocks-rss/prerm
 #!/bin/sh
 	/etc/init.d/shadowsocks-rss.sh stop
-	[ -e /etc/init.d/pcap-dnsproxy ] && /etc/init.d/pcap-dnsproxy enable
+	[ -e /etc/init.d/shadowsocksr ] && /etc/init.d/shadowsocksr enable
+	[ -e /etc/init.d/shadowsocks ] && /etc/init.d/shadowsocks enable
 exit 0
 endef
 
