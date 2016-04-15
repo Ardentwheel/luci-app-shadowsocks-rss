@@ -134,8 +134,8 @@ timeout.rmempty = false
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
 dns_server = basic:taboption("dns_page", ListValue, "dns_server", translate("DNS Server"), translate("System Default：Besure your system DNS is clean. "))
-dns_server:value("O", "Other DNS Server")
 dns_server:value("T", "Shadowsocks Tunnel")
+dns_server:value("O", "Other DNS Server")
 dns_server:value("N", "System Default")
 dns_server.default = "T"
 dns_server.rmempty = false
@@ -161,6 +161,22 @@ other_dns = basic:taboption("dns_page", Value, "other_dns", translate("Other DNS
 other_dns:value("127.0.0.1#1053")
 other_dns.default = "127.0.0.1#1053"
 other_dns:depends("dns_server", "O")
+
+dns_cache = basic:taboption("dns_page", Value, "dns_cache", translate("DNS Cache Max Quantity"))
+dns_cache:value("150")
+dns_cache:value("300")
+dns_cache:value("900")
+dns_cache.default = "300"
+dns_cache.rmempty = false
+
+dns_cache_ttl = basic:taboption("dns_page", Value, "dns_cache_ttl", translate("DNS Cache Timeout"))
+dns_cache_ttl:value("300")
+dns_cache_ttl:value("900")
+dns_cache_ttl:value("1800")
+dns_cache_ttl.default = "900"
+dns_cache_ttl.rmempty = false
+
+
 
 
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
