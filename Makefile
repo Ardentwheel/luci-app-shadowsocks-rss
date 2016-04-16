@@ -15,6 +15,7 @@ define Package/luci-app-shadowsocks-rss
 	SUBMENU:=3. Applications
 	TITLE:=LuCI for shadowsocks-rss
 	PKGARCH:=all
+	DEPENDS:=+ipset +iptables-mod-nat-extra
 endef
 
 define Package/luci-app-shadowsocks-rss/description
@@ -41,8 +42,12 @@ define Package/luci-app-shadowsocks-rss/postinst
 #!/bin/sh
 	/etc/init.d/shadowsocks-rss.sh enable
 	[ -e /etc/init.d/shadowsocksr ] && /etc/init.d/shadowsocksr disable
+<<<<<<< HEAD
 	[ -e /etc/init.d/shadowsocks ] && /etc/init.d/shadowsocks disable
 	/etc/init.d/shadowsocks-rss.sh help
+=======
+	[ -e /etc/init.d/shadowsocksr-server ] && /etc/init.d/shadowsocksr-server disable
+>>>>>>> origin/master
 exit 0
 endef
 
@@ -50,7 +55,11 @@ define Package/luci-app-shadowsocks-rss/prerm
 #!/bin/sh
 	/etc/init.d/shadowsocks-rss.sh stop
 	[ -e /etc/init.d/shadowsocksr ] && /etc/init.d/shadowsocksr enable
+<<<<<<< HEAD
 	[ -e /etc/init.d/shadowsocks ] && /etc/init.d/shadowsocks enable
+=======
+	[ -e /etc/init.d/shadowsocksr-server ] && /etc/init.d/shadowsocksr-server enable
+>>>>>>> origin/master
 exit 0
 endef
 
