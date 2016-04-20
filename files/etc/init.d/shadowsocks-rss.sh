@@ -2,10 +2,12 @@
 
 START=99
 
+EXTRA_COMMANDS="status update_list update_ipsetrules"
 EXTRA_HELP=<<EOF
 	Available Commands: 
 		status
 		udate_list
+		update_ipsetrules
 		help
 EOF
 
