@@ -2,7 +2,6 @@
 
 START=99
 
-EXTRA_COMMANDS="status update_list"
 EXTRA_HELP=<<EOF
 	Available Commands: 
 		status
@@ -34,30 +33,95 @@ DNSMASQ_IPSET="$DNSMASQ_DIR/02-ipset.conf"
 CONFIG_DIR="/etc/shadowsocks-rss"
 LIST_DIR="/etc/shadowsocks-rss/list"
 GFWLIST="$LIST_DIR/GFWList"
-GFWLIST_USER="$LIST_DIR/UserList"
+USER_LIST="$LIST_DIR/UserList"
 CHINALIST="$LIST_DIR/ChinaList"
 BYPASSLIST="$LIST_DIR/BypassList"
 GFWLIST_URL="https://raw.githubusercontent.com/wongsyrone/domain-block-list/master/domains.txt"
 CHINALIST_URL="http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
 
+dns_sequence () {
+	case $DNS_SERVER in
+	T)
+#	Shadowsocks Tunnel
+	[ $PROXY_MOD == G ] && {
+		sed -i -e "/cache-size=/d" \
+			-e "/min-cache-ttl=/d" \
+			-e "/no-resolv/d" \
+			-e "/server=/d" /etc/dnsmasq.conf
+		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
+		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
+		awk -vs="$TUNNEL_ADDR" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
+			$GFWLIST > $DNSMASQ_SERVER
+		}
+	[ $PROXY_MOD == C ] && {
+		sed -i -e "/cache-size=/d" \
+			-e "/min-cache-ttl=/d" \
+			-e "/no-resolv/d" \
+			-e "/server=/d" /etc/dnsmasq.conf
+		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
+		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
+		echo "no-resolv" >> /etc/dnsmasq.conf
+		echo "server=$TUNNEL_ADDR" >> /etc/dnsmasq.conf
 
-ipset_F() {
-	local proxy_mod
-	local local_port
-	local tunnel_port
-	local other_dns
-	local other_dns_overall
+		[ "awk '/^nameserver/{print $2}' /etc/resolv.conf" == "127.0.0.1" ] && DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf" || DNS_RESOLV="114.114.114.114"
+		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
+			$CHINALIST > $DNSMASQ_SERVER
+			}
+	[ $PROXY_MOD == A ] && {
+			sed -i -e "/cache-size=/d" \
+				-e "/min-cache-ttl=/d" \
+				-e "/no-resolv/d" \
+				-e "/server=/d" /etc/dnsmasq.conf
+		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
+		echo "no-resolv" >> /etc/dnsmasq.conf
+		echo "server=$TUNNEL_ADDR" >> /etc/dnsmasq.conf
+		}
+	;;
+	O)
+#	Other DNS Server
+	if [ $DNS_OVERALL == 1 -o $PROXY_MOD == A ]
+	then
+		sed -i -e "/cache-size=/d" \
+			-e "/min-cache-ttl=/d" \
+			-e "/no-resolv/d" \
+			-e "/server=/d" /etc/dnsmasq.conf
+		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
+		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
+		echo "no-resolv" >> /etc/dnsmasq.conf
+		echo "server=$OTHER_DNS" >> /etc/dnsmasq.conf
+	else
+		[ $PROXY_MOD == G ] && {
+			sed -i -e "/cache-size=/d" \
+				-e "/min-cache-ttl=/d" \
+				-e "/no-resolv/d" \
+				-e "/server=/d" /etc/dnsmasq.conf
+			echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
+			echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
 
-	config_get proxy_mod $1 proxy_mod
-	config_get local_port $1 local_port
-	config_get tunnel_port $1 tunnel_port
-	config_get other_dns $1 other_dns
-	config_get other_dns_overall $1 other_dns_overall
+			awk -vs="$OTHER_DNS" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
+				$GFWLIST > $DNSMASQ_SERVER
+			}
+		[ $PROXY_MOD == C ] && {
+		sed -i -e "/cache-size=/d" \
+				-e "/min-cache-ttl=/d" \
+				-e "/no-resolv/d" \
+				-e "/server=/d" /etc/dnsmasq.conf
+		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
+		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
+		echo "no-resolv" >> /etc/dnsmasq.conf
+		echo "server=$OTHER_DNS" >> /etc/dnsmasq.conf
 
-	DNS_OVERALL=0
-	[ $other_dns_overall ] && DNS_OVERALL=$other_dns_overall
-	TUNNEL_ADDR="127.0.0.1#$tunnel_port"
-	
+		[ "awk '/^nameserver/{print $2}' /etc/resolv.conf" == "127.0.0.1" ] && DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf" || DNS_RESOLV="114.114.114.114"
+		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
+			$CHINALIST > $DNSMASQ_SERVER
+		}
+	fi
+	;;
+	esac
+	echo -e '	DNS Sequence		\033[40;32;1m Finished \033[0m'
+}
+
+ipset_sequence() {	
 	rm -f $DNSMASQ_IPSET
 	rm -f $DNSMASQ_SERVER
 	mkdir -p $DNSMASQ_DIR
@@ -66,13 +130,13 @@ ipset_F() {
 	echo "conf-dir=$DNSMASQ_DIR" >> /etc/dnsmasq.conf
 
 	
-	case $proxy_mod in
+	case $PROXY_MOD in
 	G)
 #	GFW List
-#	echo "	$SERVER_ADDR:$local_port"
+#	echo "	$SERVER_ADDR:$LOCAL_PORT"
 	awk '!/^$/&&!/^#/{printf("add BypassList %s''\n",$0)}' $BYPASSLIST > $TMP_DIR/BypassList.ipset
 	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $GFWLIST > $DNSMASQ_IPSET
-	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $GFWLIST_USER >> $DNSMASQ_IPSET
+	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $USER_LIST >> $DNSMASQ_IPSET
 	ipset create gfwlist hash:ip -!
 	ipset flush gfwlist -!
 #	ipset create gfwlist6 hash:ip family inet6 -!
@@ -91,13 +155,13 @@ ipset_F() {
 	iptables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
 
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set BypassList dst -j RETURN
-	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $local_port
-#	ip6tables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist6 dst -j REDIRECT --to-ports $local_port
+	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $LOCAL_PORT
+#	ip6tables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist6 dst -j REDIRECT --to-ports $LOCAL_PORT
 
 	# Add any UDP rules
 	# ip rule add fwmark 0x01/0x01 table 100
 	# ip route add local 0.0.0.0/0 dev lo table 100
-	# iptables -t mangle -A SHADOWSOCKS -p udp --dport 53 -j TPROXY --on-port $local_port --tproxy-mark 0x01/0x01
+	# iptables -t mangle -A SHADOWSOCKS -p udp --dport 53 -j TPROXY --on-port $LOCAL_PORT --tproxy-mark 0x01/0x01
 
 	# Apply the rules
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
@@ -106,8 +170,8 @@ ipset_F() {
 #	ip6tables -t mangle -A PREROUTING -j SHADOWSOCKS
 
 	# iptables -t nat -I PREROUTING -p tcp -d $SERVER_ADDR -j RETURN
-	# iptables -t nat -A PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $local_port
-	# iptables -t nat -A OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $local_port
+	# iptables -t nat -A PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $LOCAL_PORT
+	# iptables -t nat -A OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $LOCAL_PORT
 	;;
 	C)
 #	ALL the IP address not China
@@ -126,7 +190,7 @@ ipset_F() {
 	iptables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set BypassList dst -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set ChinaList dst -j RETURN
-	iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-ports $local_port
+	iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-ports $LOCAL_PORT
 
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
 	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
@@ -135,7 +199,7 @@ ipset_F() {
 	# iptables -t nat -I PREROUTING -p tcp -d $SERVER_ADDR -j RETURN
 	# iptables -t nat -I PREROUTING -p tcp -m set --match-set BypassList dst -j RETURN
 	# iptables -t nat -I PREROUTING -p tcp -m set --match-set ChinaList dst -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -j REDIRECT --to-port $local_port
+	# iptables -t nat -I PREROUTING -p tcp -j REDIRECT --to-port $LOCAL_PORT
 	;;
 	A)
 #	All Public IP address
@@ -149,96 +213,18 @@ ipset_F() {
 
 	iptables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set BypassList dst -j RETURN
-	iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-ports $local_port
+	iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-ports $LOCAL_PORT
 
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
 	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
 	
 	# iptables -t nat -I PREROUTING -p tcp -d $SERVER_ADDR -j RETURN
 	# iptables -t nat -I PREROUTING -p tcp -m set --match-set BypassList dst -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -j REDIRECT --to-port $local_port
+	# iptables -t nat -I PREROUTING -p tcp -j REDIRECT --to-port $LOCAL_PORT
 	;;
 	esac
 
-	case $DNS_SERVER in
-	T)
-#	Shadowsocks Tunnel
-	[ $proxy_mod == G ] && {
-		sed -i -e "/cache-size=/d" \
-			-e "/min-cache-ttl=/d" \
-			-e "/no-resolv/d" \
-			-e "/server=/d" /etc/dnsmasq.conf
-		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
-		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
-		awk -vs="$TUNNEL_ADDR" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-			$GFWLIST > $DNSMASQ_SERVER
-		}
-	[ $proxy_mod == C ] && {
-		sed -i -e "/cache-size=/d" \
-			-e "/min-cache-ttl=/d" \
-			-e "/no-resolv/d" \
-			-e "/server=/d" /etc/dnsmasq.conf
-		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
-		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
-		echo "no-resolv" >> /etc/dnsmasq.conf
-		echo "server=$TUNNEL_ADDR" >> /etc/dnsmasq.conf
-
-		[ "awk '/^nameserver/{print $2}' /etc/resolv.conf" == "127.0.0.1" ] && DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf" || DNS_RESOLV="114.114.114.114"
-		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-			$CHINALIST > $DNSMASQ_SERVER
-			}
-	[ $proxy_mod == A ] && {
-			sed -i -e "/cache-size=/d" \
-				-e "/min-cache-ttl=/d" \
-				-e "/no-resolv/d" \
-				-e "/server=/d" /etc/dnsmasq.conf
-		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
-		echo "no-resolv" >> /etc/dnsmasq.conf
-		echo "server=$TUNNEL_ADDR" >> /etc/dnsmasq.conf
-		}
-	;;
-	O)
-#	Other DNS Server
-	if [ $DNS_OVERALL == 1 -o $proxy_mod == A ]
-	then
-		sed -i -e "/cache-size=/d" \
-			-e "/min-cache-ttl=/d" \
-			-e "/no-resolv/d" \
-			-e "/server=/d" /etc/dnsmasq.conf
-		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
-		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
-		echo "no-resolv" >> /etc/dnsmasq.conf
-		echo "server=$other_dns" >> /etc/dnsmasq.conf
-	else
-		[ $proxy_mod == G ] && {
-			sed -i -e "/cache-size=/d" \
-				-e "/min-cache-ttl=/d" \
-				-e "/no-resolv/d" \
-				-e "/server=/d" /etc/dnsmasq.conf
-			echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
-			echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
-
-			awk -vs="$other_dns" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-				$GFWLIST > $DNSMASQ_SERVER
-			}
-		[ $proxy_mod == C ] && {
-		sed -i -e "/cache-size=/d" \
-				-e "/min-cache-ttl=/d" \
-				-e "/no-resolv/d" \
-				-e "/server=/d" /etc/dnsmasq.conf
-		echo "cache-size=$DNSMASQ_CACHE" >> /etc/dnsmasq.conf
-		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> /etc/dnsmasq.conf
-		echo "no-resolv" >> /etc/dnsmasq.conf
-		echo "server=$other_dns" >> /etc/dnsmasq.conf
-
-		[ "awk '/^nameserver/{print $2}' /etc/resolv.conf" == "127.0.0.1" ] && DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf" || DNS_RESOLV="114.114.114.114"
-		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-			$CHINALIST > $DNSMASQ_SERVER
-		}
-	fi
-	;;
-	esac
-	echo '	ipset_Finished. '
+	echo -e '	Ipset Sequence		\033[40;32;1m Finished \033[0m'
 
 }
 
@@ -299,9 +285,8 @@ EOF
 	sleep 1
 	service_start $PRG_REDIR -c $TMP_REDIR -b 0.0.0.0 $REDIR_ONE_AUT -f $PID_REDIR 2>/dev/null || return 1
 	SERVER_ADDR=$server
-	REDIR_LOCAL=$local_port
 
-	echo '	SSR-Redir Loaded. '
+	echo -e '	SSR-Redir		\033[40;32;1m Loaded \033[0m '
 }
 
 ssr_tunnel() {
@@ -314,7 +299,7 @@ ssr_tunnel() {
 	sleep 1
 	service_start $PRG_TUNNEL -c $TMP_REDIR -b 0.0.0.0 -l $tunnel_port -L $dns_server_addr -u -f $PRG_TUNNEL 2>/dev/null || return 1
 
-	echo '	SSR-Redir Loaded. '
+	echo -e '	SSR-Redir		\033[40;32;1m Loaded \033[0m '
 }
 
 ssr_server() {
@@ -360,7 +345,7 @@ EOF
 	sleep 1
 	service_start $PRG_SERVER -c $TMP_SERVER $ONE_AUT -f $PID_SERVER 2>/dev/null || return 1
 
-	echo '	SSR-Server Loaded. '
+	echo -e '	SSR-Server		\033[40;32;1m Loaded \033[0m '
 
 }
 
@@ -377,7 +362,7 @@ ssr_local() {
 	
 	sleep 1
 	service_start $PRG_LOCAL -c $TMP_LOCAL -b 0.0.0.0 -u $ONE_AUT -f $PID_LOCAL 2>/dev/null || return 1
-	echo '	SSR-Local Loaded. '
+	echo -e '	SSR-Local		\033[40;32;1m Loaded \033[0m '
 
 }
 
@@ -385,23 +370,51 @@ ssr_header() {
 	local enabled
 	local ss_server
 	local ss_local
+	local local_port
+	local proxy_mod
 	local dns_server
+	local tunnel_port
+	local other_dns
+	local other_dns_overall
 	local dns_cache
 	local dns_cache_ttl
 
 	config_get enabled $1 enabled
 	config_get ss_server $1 ss_server
 	config_get ss_local $1 ss_local
+	config_get local_port $1 local_port
+	config_get proxy_mod $1 proxy_mod
 	config_get dns_server $1 dns_server
+	config_get tunnel_port $1 tunnel_port
+	config_get other_dns $1 other_dns
+	config_get other_dns_overall $1 other_dns_overall
 	config_get dns_cache $1 dns_cache
 	config_get dns_cache_ttl $1 dns_cache_ttl
 
 	ENABLE=$enabled
 	SS_SERVER=$ss_server
 	SS_LOCAL=$ss_local
+	LOCAL_PORT=$local_port
+	PROXY_MOD=$proxy_mod
 	DNS_SERVER=$dns_server
+	TUNNEL_ADDR="127.0.0.1#$tunnel_port"
+	OTHER_DNS=$other_dns
 	[ $dns_cache ] && DNSMASQ_CACHE=$dns_cache || DNSMASQ_CACHE=0
 	[ $dns_cache_ttl ] && DNSMASQ_CACHE_TTL=$dns_cache_ttl || DNSMASQ_CACHE_TTL=0
+
+	DNS_OVERALL=0
+	[ $other_dns_overall ] && DNS_OVERALL=$other_dns_overall
+}
+
+switches () {
+	if [ $ENABLE -a $ENABLE == 1 ]
+	then
+	/etc/init.d/shadowsocks-rss.sh enable
+	else if [ $ENABLE -a $ENABLE == 0 ]
+		then
+		/etc/init.d/shadowsocks-rss.sh disable
+		fi
+	fi
 }
 
 start() {
@@ -415,34 +428,46 @@ start() {
 		mkdir -p $TMP_DIR
 		echo -e '\033[40;33;1m Starting RSS-Redir server... \033[0m'
 		config_foreach ssr_redir
-		config_foreach ipset_F
+		ipset_sequence
+		dns_sequence
 
 		echo -e '\033[40;33;1m Starting DNS server... \033[0m'
-		[ $DNS_SERVER == T ] && config_foreach ssr_tunnel || echo '	SSR-Tunnel	Disabled. Using Other DNS Server. '
+		case $DNS_SERVER in
+		T)
+			config_foreach ssr_tunnel
+		;;
+		O)
+			echo -e "	Other DNS Server	\033[40;32;1m $OTHER_DNS \033[0m"
+		;;
+		N)
+			echo -e '	DNS Server		\033[40;32;1m System Default \033[0m Besure your system DNS is clean.'
+		;;
+		esac
 		/etc/init.d/dnsmasq restart
 
 		echo -e '\033[40;33;1m Starting Other server...\033[0m'
-		[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo '	SSR-Server Disabled. '
-		[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo '	SSR-Server Disabled. '
+		[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
+		[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
 
-		echo -e 'Shadowsocks-RSS Start		\033[40;32;1m Finished \033[0m '
+		echo -e ' Shadowsocks-RSS Start		\033[40;32;1m Finished \033[0m '
 		echo ''
 		echo -e '\033[40;33;1m Checking... \033[0m '
 		status
 	else if [ $SS_SERVER == 1 -o $SS_LOCAL == 1 ]
 		then
 			echo -e '\033[40;33;1m Shadowsocks-RSS SSR-Redir Disabled. Starting Other server... \033[0m'
-			[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo '	SSR-Server Disabled. '
-			[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo '	SSR-Server Disabled. '
+			[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
+			[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
 			
-			echo -e "Shadowsocks-RSS Start \033[40;32;1mFinished\033[0m. "
+			echo -e " Shadowsocks-RSS Start \033[40;32;1m Finished \033[0m "
 			echo ''
 			echo -e '\033[40;33;1m Checking... \033[0m '
 			status
-		else echo "Shadowsocks-RSS Disabled. "
+		else echo "	Shadowsocks-RSS		\033[40;31;1m Disabled \033[0m "
 		fi
 	fi
 
+	switches
 	echo ' '
 }
 
@@ -511,9 +536,7 @@ stop() {
 restart() {
 	stop
 	sleep 3
-	echo ''
 	start
-
 }
 
 status() {
@@ -558,10 +581,10 @@ status() {
 		fi
 	fi
 	echo ''
-	[ $(ps|grep ${PRG_REDIR}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Redir		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $local_port \033[0m		PID: \033[40;34;1m $(pidof ${PRG_REDIR##*/}) \033[0m" || echo -e '	SSR-Redir		\033[40;31;1m Stopped \033[0m '
+	[ $(ps|grep ${PRG_REDIR}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Redir		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $local_port \033[0m	PID: \033[40;34;1m $(pidof ${PRG_REDIR##*/}) \033[0m" || echo -e '	SSR-Redir		\033[40;31;1m Stopped \033[0m '
 	case $dns_server in
 	T)
-	[ $(ps|grep ${PRG_TUNNEL}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Tunnel		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $tunnel_port \033[0m		PID: \033[40;34;1m $(pidof ${PRG_TUNNEL##*/}) \033[0m" || echo -e '	SSR-Tunnel		\033[40;31;1m Stopped \033[0m '
+	[ $(ps|grep ${PRG_TUNNEL}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Tunnel		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $tunnel_port \033[0m	PID: \033[40;34;1m $(pidof ${PRG_TUNNEL##*/}) \033[0m" || echo -e '	SSR-Tunnel		\033[40;31;1m Stopped \033[0m '
 	;;
 	O)
 	echo -e "	DNS-Server		\033[40;32;1m $other_dns \033[0m"
@@ -570,9 +593,9 @@ status() {
 	echo -e '	DNS-Server		\033[40;32;1m System Default \033[0m Besure your system DNS is clean.'
 	;;
 	esac
-	[ $(ps|grep ${PRG_SERVER}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Server		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $ss_srv_port \033[0m		PID: \033[40;34;1m $(pidof ${PRG_SERVER##*/}) \033[0m" || echo -e '	SSR-Server		\033[40;31;1m Stopped \033[0m ' 
-	[ $(ps|grep ${PRG_LOCAL}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Local		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $ss_local_port \033[0m		PID: \033[40;34;1m $(pidof ${PRG_LOCAL##*/}) \033[0m" || echo -e '	SSR-Local		\033[40;31;1m Stopped \033[0m ' 
-	[ $(ps|grep ${PRG_DNSMASQ}|grep -v grep|wc -l) -ge 1 ] && echo -e "	DNSMasq			\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m 53 \033[0m		PID: \033[40;34;1m $(pidof ${PRG_DNSMASQ##*/}) \033[0m" || echo -e '	DNSMasq			\033[40;31;1m Stopped \033[0m ' 
+	[ $(ps|grep ${PRG_SERVER}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Server		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $ss_srv_port \033[0m	PID: \033[40;34;1m $(pidof ${PRG_SERVER##*/}) \033[0m" || echo -e '	SSR-Server		\033[40;31;1m Stopped \033[0m ' 
+	[ $(ps|grep ${PRG_LOCAL}|grep -v grep|wc -l) -ge 1 ] && echo -e "	SSR-Local		\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m $ss_local_port \033[0m	PID: \033[40;34;1m $(pidof ${PRG_LOCAL##*/}) \033[0m" || echo -e '	SSR-Local		\033[40;31;1m Stopped \033[0m ' 
+	[ $(ps|grep ${PRG_DNSMASQ}|grep -v grep|wc -l) -ge 1 ] && echo -e "	DNSMasq			\033[40;32;1m Running \033[0m 		Port: \033[40;34;1m 53 \033[0m	PID: \033[40;34;1m $(pidof ${PRG_DNSMASQ##*/}) \033[0m" || echo -e '	DNSMasq			\033[40;31;1m Stopped \033[0m ' 
 	echo ''
 }
 
@@ -595,6 +618,32 @@ update_list() {
 	rm -f $TMP_DIR/ChinaList.txt
 }
 
+update_ipsetrules () {
+	echo ''
+	config_load shadowsocks-rss
+	config_foreach ssr_header
+
+	case $PROXY_MOD in
+	G)
+#	GFW List
+	awk '!/^$/&&!/^#/{printf("add BypassList %s''\n",$0)}' $BYPASSLIST > $TMP_DIR/BypassList.ipset
+	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $GFWLIST > $DNSMASQ_IPSET
+	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $USER_LIST >> $DNSMASQ_IPSET
+	;;
+	C)
+#	ALL the IP address not China
+	awk '!/^$/&&!/^#/{printf("add BypassList %s''\n",$0)}' $BYPASSLIST > $TMP_DIR/BypassList.ipset
+	awk '!/^$/&&!/^#/{printf("add ChinaList %s''\n",$0)}' $CHINALIST > $TMP_DIR/ChinaList.ipset
+	;;
+	A)
+#	All Public IP address
+	awk '!/^$/&&!/^#/{printf("add BypassList %s''\n",$0)}' $BYPASSLIST > $TMP_DIR/BypassList.ipset
+	;;
+	esac
+	echo -e ' 	DNS Rules		\033[40;32;1m Updated \033[0m '
+	echo ''
+}
+
 help() {
 
 	echo -e 'Available Commands:'
@@ -603,3 +652,11 @@ help() {
 	echo -e '	\033[40;33;1m help	 \033[0m	This help. '
 
 }
+
+while [ -n "$1" ]; do
+	case $1 in
+		help) help;shift 1;;
+		h) help;shift 1;;
+		-h) help;shift 1;;
+	esac
+done

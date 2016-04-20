@@ -99,7 +99,7 @@ protocol:value("auth_sha1_v2")
 protocol.default = "origin"
 protocol.rmempty = false
 
-protocol_param = basic:taboption("general", Value, "protocol_param", translate("protocol_param"))
+protocol_param = basic:taboption("general", Value, "protocol_param", translate("Protocol Param"))
 
 
 obfs = basic:taboption("general", ListValue, "obfs", translate("Obfs"))
@@ -111,7 +111,7 @@ obfs:value("tls1.0_session_auth")
 obfs.default = "plain"
 obfs.rmempty = false
 
-obfs_param = basic:taboption("general", Value, "obfs_param", translate("obfs_param"))
+obfs_param = basic:taboption("general", Value, "obfs_param", translate("Obfs Param"))
 obfs_param:value("youku.com,sohu.com,bilibili.com")
 obfs_param.default = "youku.com,sohu.com,bilibili.com"
 obfs_param:depends("obfs", "http_simple")
@@ -185,6 +185,14 @@ dns_cache_ttl.rmempty = false
 -- Advanced Settings
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
+ss_local = basic:taboption("advanced", Flag, "ss_local", translate("Enable Local Mod"))
+ss_local.rmempty = false
+
+ss_local_port = basic:taboption("advanced", Value, "ss_local_port", translate("Local Mod Port"))
+ss_local_port.default = "1085"
+ss_local_port.datatype = "port"
+ss_local_port:depends("ss_local", "1")
+
 ss_server = basic:taboption("advanced", Flag, "ss_server", translate("Enable Server Mod"))
 ss_server.rmempty = false
 
@@ -199,8 +207,8 @@ ss_srv_listen.default = "0.0.0.0"
 ss_srv_listen.datatype = "ipaddr"
 ss_srv_listen:depends("ss_server", "1")
 
-ss_srv_port = basic:taboption("advanced", Value, "ss_srv_port", translate("Shadowsocks Server Mod Port"))
-ss_srv_port.default = "1085"
+ss_srv_port = basic:taboption("advanced", Value, "ss_srv_port", translate("Server Mod Port"))
+ss_srv_port.default = "1090"
 ss_srv_port.datatype = "port"
 ss_srv_port:depends("ss_server", "1")
 
@@ -248,7 +256,7 @@ ss_srv_prot:depends("ss_server", "1")
 ss_srv_prot_param = basic:taboption("advanced", Value, "ss_srv_prot_param", translate("Protocol Param"))
 ss_srv_prot_param:depends("ss_server", "1")
  
-ss_srv_obfs = basic:taboption("advanced", ListValue, "ss_srv_obfs", translate("obfs"))
+ss_srv_obfs = basic:taboption("advanced", ListValue, "ss_srv_obfs", translate("Obfs"))
 ss_srv_obfs:value("plain")
 ss_srv_obfs:value("http_simple")
 ss_srv_obfs:value("http_simple_compatible")
@@ -261,7 +269,7 @@ ss_srv_obfs:value("tls1.0_session_auth_compatible")
 ss_srv_obfs.default = "plain"
 ss_srv_obfs:depends("ss_server", "1")
 
-ss_srv_obfs_param = basic:taboption("advanced", Value, "ss_srv_obfs_param", translate("obfs_param"))
+ss_srv_obfs_param = basic:taboption("advanced", Value, "ss_srv_obfs_param", translate("Obfs Param"))
 ss_srv_obfs_param:depends("ss_srv_obfs", "http_simple")
 
 ss_srv_timeout = basic:taboption("advanced", Value, "ss_srv_timeout", translate("Timeout"))
@@ -275,42 +283,45 @@ ss_srv_timeout.default = "120"
 ss_srv_timeout:depends("ss_server", "1")
 
 
-ss_local = basic:taboption("advanced", Flag, "ss_local", translate("Enable Local Mod"))
-ss_local.rmempty = false
-
-ss_local_port = basic:taboption("advanced", Value, "ss_local_port", translate("Shadowsocks Server Mod Port"))
-ss_local_port.default = "1090"
-ss_local_port.datatype = "port"
-ss_local_port:depends("ss_local", "1")
-
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
 
--- ipset Settings
+--Ipset Settings
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
-button_update = basic: taboption ("ipset", Button, "_button_update", "GFWList update") 
-button_update.inputtitle = translate ( "Update GFWList Rules") 
-button_update.inputstyle = "apply" 
-function button_update.write (self, section) 
-luci.sys.call ( "") 
+
+button_update_list = basic: taboption ("ipset", Button, "_button_update_list", "GFWList update") 
+button_update_list.inputtitle = translate ( "Update GFWList Rules")
+button_update_list.inputstyle = "apply" 
+function button_update_list.write (self, section, value)
+	luci.sys.call ( "/etc/init.d/shadowsocks-rss.sh update_list")
 end 
 
-gfwlist = basic:taboption("ipset", Value, "_tmpl",
-	translate("GFWList"), 
-	translate(""))
-gfwlist.template = "cbi/tvalue"
-gfwlist.rows = 25
+--[[
+button_update_dnsrules = basic: taboption ("ipset", Button, "_button_update_dnsrules", "Ipset Rules update", translate ( "Click, If you change the User List Below. ")) 
+button_update_dnsrules.inputtitle = translate ( "Update Ipset Rules ")
+button_update_dnsrules.inputstyle = "apply" 
+function button_update_dnsrules.write (self, section, value)
+	value = value:gsub("\r\n?", "\n")
+	nixio.fs.writefile("//etc/shadowsocks-rss/list/UserList", value)
+	luci.sys.call ( "/etc/init.d/shadowsocks-rss.sh update_ipsetrules")
+end
+]]--
 
-function gfwlist.cfgvalue(self, section)
+userlist = basic:taboption("ipset", Value, "_tmpl",
+	translate("User's List"), 
+	translate(""))
+userlist.template = "cbi/tvalue"
+userlist.rows = 25
+
+function userlist.cfgvalue(self, section)
 	return nixio.fs.readfile("/etc/shadowsocks-rss/list/UserList")
 end
 
-function gfwlist.write(self, section, value)
+function userlist.write(self, section, value)
 	value = value:gsub("\r\n?", "\n")
 	nixio.fs.writefile("//etc/shadowsocks-rss/list/UserList", value)
 end
-
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
 
