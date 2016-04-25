@@ -140,10 +140,15 @@ dns_server:value("N", "System Default")
 dns_server.default = "T"
 dns_server.rmempty = false
 
-tunnel_port = basic:taboption("dns_page", Value, "tunnel_port", translate("Shadowsocks Tunnel Port"))
+with_tunnel = basic:taboption("dns_page", Flag, "with_tunnel", translate("Shadowsocks Tunnel"), translate(""))
+with_tunnel.default = "0"
+with_tunnel:depends("dns_server", "O")
+
+tunnel_port = basic:taboption("dns_page", Value, "tunnel_port", translate("Tunnel Port"))
 tunnel_port.default = "5353"
 tunnel_port.datatype = "port"
 tunnel_port:depends("dns_server", "T")
+tunnel_port:depends("with_tunnel", "1")
 
 dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("DNS Address"), translate("Tunnel Listening DNS Address (IP:port)"))
 dns_server_addr:value("8.8.8.8:53")
@@ -152,6 +157,7 @@ dns_server_addr:value("208.67.220.220:443")
 dns_server_addr:value("208.67.222.222:5353")
 dns_server_addr.default = "8.8.8.8:53"
 dns_server_addr:depends("dns_server", "T")
+dns_server_addr:depends("with_tunnel", "1")
 
 other_dns_overall = basic:taboption("dns_page", Flag, "other_dns_overall", translate("Overall Upstream DNS"), translate("All request will handed over to the DNS set below. "))
 other_dns_overall.default = "0"
@@ -161,6 +167,14 @@ other_dns = basic:taboption("dns_page", Value, "other_dns", translate("Other DNS
 other_dns:value("127.0.0.1#1053")
 other_dns.default = "127.0.0.1#1053"
 other_dns:depends("dns_server", "O")
+
+dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("DNS Address"), translate("Tunnel Listening DNS Address (IP:port)"))
+dns_server_addr:value("8.8.8.8:53")
+dns_server_addr:value("8.8.4.4:53")
+dns_server_addr:value("208.67.220.220:443")
+dns_server_addr:value("208.67.222.222:5353")
+dns_server_addr.default = "8.8.8.8:53"
+dns_server_addr:depends("dns_server", "T")
 
 dns_cache = basic:taboption("dns_page", Value, "dns_cache", translate("DNS Cache Max Quantity"))
 dns_cache:value("150")
