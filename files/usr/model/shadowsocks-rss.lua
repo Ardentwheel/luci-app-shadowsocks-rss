@@ -63,9 +63,9 @@ password.default = "password"
 password.password = true
 password.rmempty = false
 
-one_AUT = basic:taboption("general", Flag, "one_AUT", translate("Onetime Authentication"),
+one_auth = basic:taboption("general", Flag, "one_auth", translate("Onetime Authentication"),
 	translate(""))
-one_AUT.rmempty = false
+one_auth.rmempty = false
 
 method = basic:taboption("general", ListValue, "method", translate("Encryption Method"))
 method:value("table")
@@ -185,8 +185,27 @@ dns_cache_ttl.rmempty = false
 -- Advanced Settings
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
+random_port = basic:taboption("advanced", Flag, "random_port", translate("Enable Random Port"),
+	translate("Need Server Support"))
+random_port.rmempty = false
+
+random_port_A = basic:taboption("advanced", Value, "random_port_A", translate("Local Mod Port"))
+random_port_A.datatype = "port"
+random_port_A:depends("random_port", "1")
+
+random_port_O = basic:taboption("advanced", Value, "random_port_O", translate("Local Mod Port"))
+random_port_O.datatype = "port"
+random_port_O:depends("random_port", "1")
+
 ss_local = basic:taboption("advanced", Flag, "ss_local", translate("Enable Local Mod"))
 ss_local.rmempty = false
+
+ss_local_listen = basic:taboption("advanced", Value, "ss_local_listen", translate("Server Listening Address"))
+ss_local_listen:value("0.0.0.0")
+ss_local_listen:value("127.0.0.1")
+ss_local_listen.default = "0.0.0.0"
+ss_local_listen.datatype = "ipaddr"
+ss_local_listen:depends("ss_server", "1")
 
 ss_local_port = basic:taboption("advanced", Value, "ss_local_port", translate("Local Mod Port"))
 ss_local_port.default = "1085"
@@ -216,6 +235,9 @@ ss_srv_pwd = basic:taboption("advanced", Value, "ss_srv_pwd", translate("Passwor
 ss_srv_pwd.default = "password"
 ss_srv_pwd:depends("ss_server", "1")
 ss_srv_pwd.password = true
+
+srv_one_auth = basic:taboption("advanced", Flag, "srv_one_auth", translate("Onetime Authentication"),
+	translate(""))
 
 ss_srv_method = basic:taboption("advanced", ListValue, "ss_srv_method", translate("Encryption Method"))
 ss_srv_method:value("table")

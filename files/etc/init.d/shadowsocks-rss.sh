@@ -11,10 +11,14 @@ EXTRA_HELP=<<EOF
 		help
 EOF
 
+SERVICE_USE_PID=1
+SERVICE_WRITE_PID=1
+SERVICE_DAEMONIZE=1
+
+PRG_DNSMASQ="/usr/sbin/dnsmasq"
 PRG_REDIR="/usr/bin/ssr-redir"
 PRG_TUNNEL="/usr/bin/ssr-tunnel"
 PRG_SERVER="/usr/bin/ssr-server"
-PRG_DNSMASQ="/usr/sbin/dnsmasq"
 PRG_LOCAL="/usr/bin/ssr-local"
 PID_REDIR="/var/run/ssr-redir"
 PID_TUNNEL="/var/run/ssr-tunnel"
@@ -231,11 +235,7 @@ ipset_sequence() {
 }
 
 ssr_redir() {
-	local fast_open
-	local one_AUT
-	local server
 	local server_port
-	local local_port
 	local password
 	local method
 	local protocol
@@ -244,11 +244,7 @@ ssr_redir() {
 	local obfs_param
 	local timeout
 
-	config_get fast_open $1 fast_open
-	config_get one_AUT $1 one_AUT
-	config_get server $1 server
 	config_get server_port $1 server_port
-	config_get local_port $1 local_port
 	config_get password $1 password
 	config_get method $1 method
 	config_get protocol $1 protocol
@@ -257,36 +253,26 @@ ssr_redir() {
 	config_get obfs_param $1 obfs_param
 	config_get timeout $1 timeout
 
-	if [ $fast_open == 1 ] 
-	then
-		FAST_OPEN="true"
-		sed -i "/net.ipv4.tcp_fastopen/d" /etc/sysctl.conf
-		echo "net.ipv4.tcp_fastopen=3" >> /etc/sysctl.conf
-	else
-	FAST_OPEN="false"
-	fi
-
 	cat > $TMP_REDIR <<EOF
 {
-    "server": "$server",
-    "server_port": $server_port,
-    "local_port": $local_port,
-    "password": "$password",
-    "method": "$method",
-    "timeout": $timeout,
-    "protocol": "$protocol",
-    "protocol_param": "$protocol_param",
-    "obfs": "$obfs",
-    "obfs_param": "$obfs_param",
-    "fast_open": $FAST_OPEN	
+	"server": "$SERVER_ADDR",
+	"server_port": $server_port,
+	"local_address": "0.0.0.0",
+	"local_port": $LOCAL_PORT,
+	"password": "$password",
+	"method": "$method",
+	"timeout": $timeout,
+	"protocol": "$protocol",
+	"protocol_param": "$protocol_param",
+	"obfs": "$obfs",
+	"obfs_param": "$obfs_param",
+	"fast_open": $FAST_OPEN
 }
 EOF
-		
-	[ $one_AUT -a $one_AUT == 1 ] && REDIR_ONE_AUT="-A" || REDIR_ONE_AUT=""
 
 	sleep 1
-	service_start $PRG_REDIR -c $TMP_REDIR -b 0.0.0.0 $REDIR_ONE_AUT -f $PID_REDIR 2>/dev/null || return 1
-	SERVER_ADDR=$server
+	echo "	service_start $PRG_REDIR -c $TMP_REDIR -b 0.0.0.0 $REDIR_ONE_AUT -f $PID_REDIR 2>/dev/null"
+	service_start $PRG_REDIR -c $TMP_REDIR $REDIR_ONE_AUT -f $PID_REDIR 2>/dev/null
 
 	echo -e '	SSR-Redir		\033[40;32;1m Loaded \033[0m '
 }
@@ -299,7 +285,7 @@ ssr_tunnel() {
 	config_get dns_server_addr $1 dns_server_addr
 
 	sleep 1
-	service_start $PRG_TUNNEL -c $TMP_REDIR -b 0.0.0.0 -l $tunnel_port -L $dns_server_addr -u -f $PRG_TUNNEL 2>/dev/null || return 1
+	service_start $PRG_TUNNEL -c $TMP_REDIR -b 0.0.0.0 -l $tunnel_port -L $dns_server_addr -u -f $PRG_TUNNEL 2>/dev/null
 
 	echo -e '	SSR-Redir		\033[40;32;1m Loaded \033[0m '
 }
@@ -309,6 +295,7 @@ ssr_server() {
 	local ss_srv_listen
 	local ss_srv_port
 	local ss_srv_pwd
+	local srv_one_auth
 	local ss_srv_method
 	local ss_srv_prot
 	local ss_srv_prot_param
@@ -320,6 +307,7 @@ ssr_server() {
 	config_get ss_srv_listen $1 ss_srv_listen
 	config_get ss_srv_port $1 ss_srv_port
 	config_get ss_srv_pwd $1 ss_srv_pwd
+	config_get srv_one_auth $1 srv_one_auth
 	config_get ss_srv_method $1 ss_srv_method
 	config_get ss_srv_prot $1 ss_srv_prot
 	config_get ss_srv_prot_param $1 ss_srv_prot_param
@@ -327,52 +315,98 @@ ssr_server() {
 	config_get ss_srv_obfs_param $1 ss_srv_obfs_param
 	config_get ss_srv_timeout $1 ss_srv_timeout
 
-	[ $ss_srv_fastopen -a $ss_srv_fastopen == 1 ] && SRV_FAST_OPEN="true" || SRV_FAST_OPEN="false"
-	
+	[ $srv_one_auth -a $srv_one_auth == 1 ] && SRV_ONE_AUTH="-A" || SRV_ONE_AUTH=""
+
 	cat > $TMP_SERVER <<EOF
 {
-    "server": "$ss_srv_listen",
-    "server_port": $ss_srv_port,
-    "password": "$ss_srv_pwd",
-    "method": "$ss_srv_method",
-    "timeout": $ss_srv_timeout,
-    "protocol": "$ss_srv_prot",
-    "protocol_param": "$ss_srv_prot_param",
-    "obfs": "$ss_srv_obfs",
-    "obfs_param": "$ss_srv_obfs_param",
-    "fast_open": $SRV_FAST_OPEN	
+	"server": "$ss_srv_listen",
+	"server_port": $ss_srv_port,
+	"password": "$ss_srv_pwd",
+	"method": "$ss_srv_method",
+	"timeout": $ss_srv_timeout,
+	"protocol": "$ss_srv_prot",
+	"protocol_param": "$ss_srv_prot_param",
+	"obfs": "$ss_srv_obfs",
+	"obfs_param": "$ss_srv_obfs_param",
+	"fast_open": $SRV_FAST_OPEN
 }
 EOF
 
 	sleep 1
-	service_start $PRG_SERVER -c $TMP_SERVER $ONE_AUT -f $PID_SERVER 2>/dev/null || return 1
+	service_start $PRG_SERVER -c $TMP_SERVER $SRV_ONE_AUTH -f $PID_SERVER 2>/dev/null
 
 	echo -e '	SSR-Server		\033[40;32;1m Loaded \033[0m '
 
 }
 
 ssr_local() {
-	local local_port
+	local server_port
+	local ss_local_listen
 	local ss_local_port
+	local password
+	local method
+	local protocol
+	local protocol_param
+	local obfs
+	local obfs_param
+	local timeout
 
-	config_get local_port $1 local_port 
-	config_get ss_local_port $1 ss_local_port 
+	config_get server_port $1 server_port
+	config_get ss_local_listen $1 ss_local_listen
+	config_get ss_local_port $1 ss_local_port
+	config_get password $1 password
+	config_get method $1 method
+	config_get protocol $1 protocol
+	config_get protocol_param $1 protocol_param
+	config_get obfs $1 obfs
+	config_get obfs_param $1 obfs_param
+	config_get timeout $1 timeout
+ 
 
-	cp $TMP_REDIR $TMP_LOCAL
-	
-	sed -i "s/\"local_port\": $local_port\,/\"local_port\": $ss_local_port\,/g" $TMP_LOCAL
-	
+	cat > $TMP_LOCAL <<EOF
+{
+	"server": "$SERVER_ADDR",
+	"server_port": $server_port,
+	"local_address": "$ss_local_listen",
+	"local_port": $ss_local_port,
+	"password": "$password",
+	"method": "$method",
+	"timeout": $timeout,
+	"protocol": "$protocol",
+	"protocol_param": "$protocol_param",
+	"obfs": "$obfs",
+	"obfs_param": "$obfs_param",
+	"fast_open": $FAST_OPEN
+}
+EOF
+
+	sed -i "s/\"LOCAL_PORT\": $LOCAL_PORT\,/\"local_port\": $ss_local_port\,/g" $TMP_LOCAL
+
 	sleep 1
-	service_start $PRG_LOCAL -c $TMP_LOCAL -b 0.0.0.0 -u $ONE_AUT -f $PID_LOCAL 2>/dev/null || return 1
+	service_start $PRG_LOCAL -c $TMP_LOCAL -u $REDIR_ONE_AUT -f $PID_LOCAL 2>/dev/null
 	echo -e '	SSR-Local		\033[40;32;1m Loaded \033[0m '
 
 }
 
+random_port_seq() {
+	local server_port=`uci get shadowsocks-rss.@basic[0].server_port 2>/dev/null`
+	local random_port_A=`uci get shadowsocks-rss.@basic[0].random_port_A 2>/dev/null`
+	local random_port_O=`uci get shadowsocks-rss.@basic[0].random_port_O 2>/dev/null`
+
+	iptables -t nat -I OUTPUT 1 -d $SERVER_ADDR -p tcp --dport $server_port -j DNAT --to-destination $SERVER_ADDR:$random_port_A-$random_port_O --random
+	iptables -t nat -I OUTPUT 1 -d $SERVER_ADDR -p udp --dport $server_port -j DNAT --to-destination $SERVER_ADDR:$random_port_A-$random_port_O --random
+
+	echo -e '	Random-Port		\033[40;32;1m Finished \033[0m '
+}
+
 ssr_header() {
 	local enabled
+	local random_port
 	local ss_server
 	local ss_local
+	local server
 	local local_port
+	local one_auth
 	local proxy_mod
 	local dns_server
 	local tunnel_port
@@ -380,11 +414,16 @@ ssr_header() {
 	local other_dns_overall
 	local dns_cache
 	local dns_cache_ttl
-
+	local fast_open
+	local ss_srv_fastopen
+	
 	config_get enabled $1 enabled
+	config_get random_port $1 random_port
 	config_get ss_server $1 ss_server
 	config_get ss_local $1 ss_local
+	config_get server $1 server
 	config_get local_port $1 local_port
+	config_get one_auth $1 one_auth
 	config_get proxy_mod $1 proxy_mod
 	config_get dns_server $1 dns_server
 	config_get tunnel_port $1 tunnel_port
@@ -392,20 +431,49 @@ ssr_header() {
 	config_get other_dns_overall $1 other_dns_overall
 	config_get dns_cache $1 dns_cache
 	config_get dns_cache_ttl $1 dns_cache_ttl
+	config_get fast_open $1 fast_open
+	config_get ss_srv_fastopen $1 ss_srv_fastopen
 
 	ENABLE=$enabled
+	RANDOM_PORT=$random_port
 	SS_SERVER=$ss_server
 	SS_LOCAL=$ss_local
+
+	SERVER_ADDR=$server
 	LOCAL_PORT=$local_port
 	PROXY_MOD=$proxy_mod
 	DNS_SERVER=$dns_server
 	TUNNEL_ADDR="127.0.0.1#$tunnel_port"
 	OTHER_DNS=$other_dns
+	[ $one_auth -a $one_auth == 1 ] && REDIR_ONE_AUT="-A" || REDIR_ONE_AUT=""
 	[ $dns_cache ] && DNSMASQ_CACHE=$dns_cache || DNSMASQ_CACHE=0
 	[ $dns_cache_ttl ] && DNSMASQ_CACHE_TTL=$dns_cache_ttl || DNSMASQ_CACHE_TTL=0
 
 	DNS_OVERALL=0
 	[ $other_dns_overall ] && DNS_OVERALL=$other_dns_overall
+	
+	if [ $fast_open -a $fast_open == 1 ]
+	then FAST_OPEN="true"
+	else 
+		FAST_OPEN="false"
+		$fast_open=0
+	fi
+
+	if [ $ss_srv_fastopen -a $ss_srv_fastopen == 1 ]
+	then SRV_FAST_OPEN="true"
+	else 
+		SRV_FAST_OPEN="false"
+		$ss_srv_fastopen=0
+	fi
+
+	if [ $fast_open == 1 -o $ss_srv_fastopen == 1 ] 
+	then
+		FAST_OPEN="true"
+		sed -i "/net.ipv4.tcp_fastopen/d" /etc/sysctl.conf
+		echo "net.ipv4.tcp_fastopen=3" >> /etc/sysctl.conf
+	else
+	FAST_OPEN="false"
+	fi
 }
 
 switches () {
@@ -423,11 +491,10 @@ start() {
 	echo ''
 	config_load shadowsocks-rss
 	config_foreach ssr_header
+	mkdir -p $TMP_DIR
 
 	if [ $ENABLE -a $ENABLE == 1 ]
 	then
-
-		mkdir -p $TMP_DIR
 		echo -e '\033[40;33;1m Starting RSS-Redir server... \033[0m'
 		config_foreach ssr_redir
 		ipset_sequence
@@ -450,6 +517,7 @@ start() {
 		echo -e '\033[40;33;1m Starting Other server...\033[0m'
 		[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
 		[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
+		[ $RANDOM_PORT -a $RANDOM_PORT == 1 ] && random_port_seq || echo -e '	Random-Port		\033[40;31;1m Disabled \033[0m '
 
 		echo -e ' Shadowsocks-RSS Start		\033[40;32;1m Finished \033[0m '
 		echo ''
@@ -458,9 +526,11 @@ start() {
 	else if [ $SS_SERVER == 1 -o $SS_LOCAL == 1 ]
 		then
 			echo -e '\033[40;33;1m Shadowsocks-RSS SSR-Redir Disabled. Starting Other server... \033[0m'
-			[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
-			[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
 			
+			[ $RANDOM_PORT -a $RANDOM_PORT == 1 ] && random_port_seq || echo -e '	Random-Port		\033[40;31;1m Disabled \033[0m '
+			[ $SS_LOCAL == 1 ] && config_foreach ssr_local || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
+			[ $SS_SERVER == 1 ] && config_foreach ssr_server || echo -e '	SSR-Server		\033[40;31;1m Disabled \033[0m '
+
 			echo -e " Shadowsocks-RSS Start \033[40;32;1m Finished \033[0m "
 			echo ''
 			echo -e '\033[40;33;1m Checking... \033[0m '
@@ -655,10 +725,8 @@ help() {
 
 }
 
-while [ -n "$1" ]; do
-	case $1 in
-		help) help;shift 1;;
-		h) help;shift 1;;
-		-h) help;shift 1;;
-	esac
-done
+case $1 in
+	help) help;shift 1;;
+	h) help;shift 1;;
+	-h) help;shift 1;;
+esac
