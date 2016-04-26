@@ -334,14 +334,9 @@ function button_update_list.write (self, section, value)
 end 
 
 --[[
-button_update_dnsrules = basic: taboption ("ipset", Button, "_button_update_dnsrules", "Ipset Rules update", translate ( "Click, If you change the User List Below. ")) 
-button_update_dnsrules.inputtitle = translate ( "Update Ipset Rules ")
-button_update_dnsrules.inputstyle = "apply" 
-function button_update_dnsrules.write (self, section, value)
-	value = value:gsub("\r\n?", "\n")
-	nixio.fs.writefile("//etc/shadowsocks-rss/list/UserList", value)
-	luci.sys.call ( "/etc/init.d/shadowsocks-rss.sh update_ipsetrules")
-end
+userlist = basic: taboption ("ipset", Button, "_button_update_dnsrules", "Ipset Rules update", translate ( "Click, If you change the User List Below. ")) 
+userlist.inputtitle = translate ( "Update Ipset Rules ")
+userlist.inputstyle = "apply" 
 ]]--
 
 userlist = basic:taboption("ipset", Value, "_tmpl",
