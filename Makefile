@@ -15,7 +15,7 @@ define Package/luci-app-shadowsocks-rss
 	SUBMENU:=3. Applications
 	TITLE:=LuCI for shadowsocks-rss
 	PKGARCH:=all
-	DEPENDS:=+ipset +iptables-mod-nat-extra
+	DEPENDS:=+ipset +iptables-mod-nat-extra 
 endef
 
 define Package/luci-app-shadowsocks-rss/description

@@ -136,34 +136,25 @@ ipset_sequence() {
 	sed -i '/conf-dir=/d' $DNSMASQ_CONF
 	echo "conf-dir=$DNSMASQ_DIR" >> $DNSMASQ_CONF
 
-	
 	case $PROXY_MOD in
 	G)
 #	GFW List
-#	echo "	$SERVER_ADDR:$LOCAL_PORT"
 	awk '!/^$/&&!/^#/{printf("add BypassList %s''\n",$0)}' $BYPASSLIST > $TMP_DIR/BypassList.ipset
 	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $GFWLIST > $DNSMASQ_IPSET
 	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $USER_LIST >> $DNSMASQ_IPSET
 	ipset create gfwlist hash:ip -!
 	ipset flush gfwlist -!
-#	ipset create gfwlist6 hash:ip family inet6 -!
-#	ipset flush gfwlist6 -!
 	ipset create BypassList hash:net -!
 	ipset flush BypassList -!
 	ipset restore -f $TMP_DIR/BypassList.ipset
 
-
 	# Create new chain
 	iptables -t nat -N SHADOWSOCKS
 	iptables -t mangle -N SHADOWSOCKS
-#	ip6tables -t nat -N SHADOWSOCKS
-#	ip6tables -t mangle -N SHADOWSOCKS
 
 	iptables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
-
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set BypassList dst -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $LOCAL_PORT
-#	ip6tables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist6 dst -j REDIRECT --to-ports $LOCAL_PORT
 
 	# Add any UDP rules
 	# ip rule add fwmark 0x01/0x01 table 100
@@ -173,12 +164,7 @@ ipset_sequence() {
 	# Apply the rules
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
 	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
-#	ip6tables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
-#	ip6tables -t mangle -A PREROUTING -j SHADOWSOCKS
-
-	# iptables -t nat -I PREROUTING -p tcp -d $SERVER_ADDR -j RETURN
-	# iptables -t nat -A PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $LOCAL_PORT
-	# iptables -t nat -A OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port $LOCAL_PORT
+	# iptables -t nat -A OUTPUT -j SHADOWSOCKS
 	;;
 	C)
 #	ALL the IP address not China
@@ -201,12 +187,6 @@ ipset_sequence() {
 
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
 	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
-
-
-	# iptables -t nat -I PREROUTING -p tcp -d $SERVER_ADDR -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -m set --match-set BypassList dst -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -m set --match-set ChinaList dst -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -j REDIRECT --to-port $LOCAL_PORT
 	;;
 	A)
 #	All Public IP address
@@ -224,10 +204,6 @@ ipset_sequence() {
 
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
 	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
-	
-	# iptables -t nat -I PREROUTING -p tcp -d $SERVER_ADDR -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -m set --match-set BypassList dst -j RETURN
-	# iptables -t nat -I PREROUTING -p tcp -j REDIRECT --to-port $LOCAL_PORT
 	;;
 	esac
 

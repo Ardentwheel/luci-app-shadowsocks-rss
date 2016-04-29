@@ -12,6 +12,45 @@ else
 	state_msg = "<b><font color=\"red\">" .. translate("Not running") .. "</font></b>"
 end
 
+local method_list = {
+	"table",
+	"rc4",
+	"rc4-md5",
+	"aes-128-cfb",
+	"aes-192-cfb",
+	"aes-256-cfb",
+	"bf-cfb",
+	"camellia-128-cfb",
+	"camellia-192-cfb",
+	"camellia-256-cfb",
+	"cast5-cfb",
+	"des-cfb",
+	"idea-cfb",
+	"rc2-cfb",
+	"seed-cfb",
+	"salsa20",
+	"chacha20",
+	"chacha20-ietf",
+}
+
+local protocol_list = {
+	"origin",
+	"verify_simple",
+	"verify_deflate",
+	"auth_simple",
+	"auth_sha1",
+	"auth_sha1_v2"
+}
+
+local obfs_list = {
+	"plain",
+	"http_simple",
+	"tls_simple",
+	"random_hesd",
+	"tls1.0_session_auth",
+	"tls1.2_ticket_auth",
+}
+
 m = Map("shadowsocks-rss", translate("Shadowsocks-RSS"),
 	translate("A fast secure tunnel proxy that help you get through firewalls on your router") .. " - " .. state_msg)
 
@@ -68,53 +107,30 @@ one_auth = basic:taboption("general", Flag, "one_auth", translate("Onetime Authe
 one_auth.rmempty = false
 
 method = basic:taboption("general", ListValue, "method", translate("Encryption Method"))
-method:value("table")
-method:value("aes-128-cfb")
-method:value("aes-192-cfb")
-method:value("aes-256-cfb")
-method:value("bf-cfb")
-method:value("camellia-128-cfb")
-method:value("camellia-192-cfb")
-method:value("camellia-256-cfb")
-method:value("cast5-cfb")
-method:value("chacha20")
-method:value("chacha20-ietf")
-method:value("des-cfb")
-method:value("idea-cfb")
-method:value("rc2-cfb")
-method:value("rc4")
-method:value("rc4-md5")
-method:value("seed-cfb")
-method:value("salsa20")
+for _, value in ipairs(method_list) do method:value(value) end
 method.default = "table"
 method.rmempty = false
 
 protocol = basic:taboption("general", ListValue, "protocol", translate("Protocol"))
-protocol:value("origin")
-protocol:value("verify_simple")
-protocol:value("verify_deflate")
-protocol:value("auth_simple")
-protocol:value("auth_sha1")
-protocol:value("auth_sha1_v2")
-protocol.default = "origin"
+for _, value in ipairs(protocol_list) do protocol:value(value) end
 protocol.rmempty = false
 
 protocol_param = basic:taboption("general", Value, "protocol_param", translate("Protocol Param"))
-
+protocol_param:value("", "Disable")
 
 obfs = basic:taboption("general", ListValue, "obfs", translate("Obfs"))
-obfs:value("plain")
-obfs:value("http_simple")
-obfs:value("tls_simple")
-obfs:value("random_hesd")
-obfs:value("tls1.0_session_auth")
+for _, value in ipairs(obfs_list) do obfs:value(value) end
 obfs.default = "plain"
 obfs.rmempty = false
 
 obfs_param = basic:taboption("general", Value, "obfs_param", translate("Obfs Param"))
-obfs_param:value("youku.com,sohu.com,bilibili.com")
-obfs_param.default = "youku.com,sohu.com,bilibili.com"
+obfs_param:value("", "Disable")
+obfs_param:value("cloudfront.net")
+obfs_param:value("cloudfront.net,cloudfront.com")
+obfs_param:value("youku.com,cloudfront.net,sohu.com,bilibili.com")
+obfs_param.default = ""
 obfs_param:depends("obfs", "http_simple")
+obfs_param:depends("obfs", "tls1.2_ticket_auth")
 
 timeout = basic:taboption("general", Value, "timeout", translate("timeout"))
 timeout:value("30")
@@ -254,25 +270,7 @@ srv_one_auth = basic:taboption("advanced", Flag, "srv_one_auth", translate("Onet
 	translate(""))
 
 ss_srv_method = basic:taboption("advanced", ListValue, "ss_srv_method", translate("Encryption Method"))
-ss_srv_method:value("table")
-ss_srv_method:value("aes-128-cfb")
-ss_srv_method:value("aes-192-cfb")
-ss_srv_method:value("aes-256-cfb")
-ss_srv_method:value("bf-cfb")
-ss_srv_method:value("camellia-128-cfb")
-ss_srv_method:value("camellia-192-cfb")
-ss_srv_method:value("camellia-256-cfb")
-ss_srv_method:value("cast5-cfb")
-ss_srv_method:value("chacha20")
-ss_srv_method:value("chacha20-ietf")
-ss_srv_method:value("des-cfb")
-ss_srv_method:value("idea-cfb")
-ss_srv_method:value("rc2-cfb")
-ss_srv_method:value("rc4")
-ss_srv_method:value("rc4-md5")
-ss_srv_method:value("seed-cfb")
-ss_srv_method:value("salsa20")
-ss_srv_method.default = "table"
+for _, value in ipairs(method_list) do ss_srv_method:value(value) end
 ss_srv_method:depends("ss_server", "1")
 
 ss_srv_prot = basic:taboption("advanced", ListValue, "ss_srv_prot", translate("Protocol"))
@@ -290,6 +288,7 @@ ss_srv_prot.default = "origin"
 ss_srv_prot:depends("ss_server", "1")
 
 ss_srv_prot_param = basic:taboption("advanced", Value, "ss_srv_prot_param", translate("Protocol Param"))
+ss_srv_prot_param:value("", "Disable")
 ss_srv_prot_param:depends("ss_server", "1")
  
 ss_srv_obfs = basic:taboption("advanced", ListValue, "ss_srv_obfs", translate("Obfs"))
@@ -302,11 +301,17 @@ ss_srv_obfs:value("random_hesd")
 ss_srv_obfs:value("random_hesd_compatible")
 ss_srv_obfs:value("tls1.0_session_auth")
 ss_srv_obfs:value("tls1.0_session_auth_compatible")
-ss_srv_obfs.default = "plain"
+ss_srv_obfs:value("tls1.2_ticket_auth")
+ss_srv_obfs:value("tls1.2_ticket_auth_compatible")
+ss_srv_obfs. = "plain"
 ss_srv_obfs:depends("ss_server", "1")
 
 ss_srv_obfs_param = basic:taboption("advanced", Value, "ss_srv_obfs_param", translate("Obfs Param"))
+ss_srv_obfs_param:value("", "Disable")
 ss_srv_obfs_param:depends("ss_srv_obfs", "http_simple")
+ss_srv_obfs_param:depends("ss_srv_obfs", "http_simple_compatible")
+ss_srv_obfs_param:depends("ss_srv_obfs", "tls1.2_ticket_auth")
+ss_srv_obfs_param:depends("ss_srv_obfs", "tls1.2_ticket_auth_compatible")
 
 ss_srv_timeout = basic:taboption("advanced", Value, "ss_srv_timeout", translate("Timeout"))
 ss_srv_timeout:value("30")
