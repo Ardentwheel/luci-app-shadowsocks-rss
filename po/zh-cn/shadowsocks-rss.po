@@ -1,0 +1,141 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"PO-Revision-Date: 2013-10-08 13:41+0200\n"
+"Last-Translator: Tanyingyu <Tanyingyu@163.com>\n"
+"Language-Team: none\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+# General Settings
+
+msgid "TCP Fast Open"
+msgstr "TCP 快速打开"
+
+msgid "Proxy Mode"
+msgstr "代理模式"
+
+msgid "GFW List"
+msgstr "GFW 列表"
+
+msgid "Other Than China"
+msgstr "除中国以外的IP地址"
+
+msgid "All Public IP address"
+msgstr "所有公网IP地址"
+
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgid "Server Port"
+msgstr "服务器端口"
+
+msgid "Local Port"
+msgstr "本地监听端口"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Onetime Authentication"
+msgstr "一次性认证"
+
+msgid "Encryption Method"
+msgstr "加密模式"
+
+msgid "Protocol"
+msgstr "协议定义"
+
+msgid "Protocol Param"
+msgstr ""
+
+msgid "Obfs"
+msgstr "混淆插件"
+
+msgid "Obfs Param"
+msgstr ""
+
+msgid "timeout"
+msgstr "超时"
+
+msgid "IPv4 support needs Liunx version newer than 3.7. IPv6 TFO support needs Liunx version newer than 3.16."
+msgstr "IPv4支持需要Linux内核大于3.7, IPv6支持需要Linux内核大于3.16. "
+
+# DNS
+
+msgid "DNS Server"
+msgstr ""
+
+msgid "Shadowsocks Tunnel"
+msgstr ""
+
+msgid "Other DNS Server"
+msgstr "使用其他DNS服务器"
+
+msgid "System Default"
+msgstr "系统默认"
+
+msgid "Tunnel Port"
+msgstr "Tunnel 端口"
+
+msgid "Tunnel Upstream DNS"
+msgstr ""
+
+msgid "Overall Upstream DNS"
+msgstr ""
+
+msgid "DNS Cache Max Quantity"
+msgstr "DNS 缓存最大数量"
+
+msgid "DNS Cache Timeout"
+msgstr "DNS 缓存超时时间"
+
+msgid "System Default：Be sure your system DNS is clean."
+msgstr "系统默认: 使用前请确认系统默认的DNS服务器没有被污染"
+
+msgid "Enable Shadowsocks Tunnel Also."
+msgstr "同时打开 Shadowsocks Tunnel"
+
+msgid "Tunnel Listening DNS Address"
+msgstr ""
+
+msgid "All DNS request will handed over to the DNS set below."
+msgstr "所有 DNS 请求都转发到下面定义的 DNS 服务器"
+
+msgid "Default:Only the domain mach GFWList will be handed over to the DNS set above."
+msgstr ""
+
+# Advanced Settings
+
+msgid "Random Port"
+msgstr "随机端口"
+
+msgid "Starting Port"
+msgstr "起始端口"
+
+msgid "Ending Port"
+msgstr "结束端口"
+
+msgid "SSR-Local Mod"
+msgstr "SSR-Local 模块"
+
+msgid "Listening Address"
+msgstr "监听地址"
+
+msgid "SSR-Server Mod"
+msgstr "SSR-Server 模块"
+
+msgid "Need Server Support"
+msgstr "需要服务器支持"
+
+# List
+
+msgid "List Update"
+msgstr "列表更新"
+
+msgid "Update"
+msgstr "更新"
+

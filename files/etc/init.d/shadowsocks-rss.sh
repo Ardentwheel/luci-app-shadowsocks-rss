@@ -42,9 +42,11 @@ LIST_DIR="/etc/shadowsocks-rss/list"
 GFWLIST="$LIST_DIR/GFWList"
 USER_LIST="$LIST_DIR/UserList"
 CHINALIST="$LIST_DIR/ChinaList"
+CHINADOMAINLIST="$LIST_DIR/ChinaDomainList"
 BYPASSLIST="$LIST_DIR/BypassList"
 GFWLIST_URL="https://raw.githubusercontent.com/wongsyrone/domain-block-list/master/domains.txt"
 CHINALIST_URL="http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
+CHINADOMAINLIST_URL="https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/master/accelerated-domains.china.conf"
 
 dns_sequence () {
 	case $DNS_SERVER in
@@ -671,6 +673,12 @@ update_list() {
 		| grep ipv4 | grep CN | awk -F\| '{ printf("%s/%d\n", $4, 32-log($5)/log(2)) }' > $TMP_DIR/ChinaList.txt 
 	[ -e $TMP_DIR/ChinaList.txt ] && cp $TMP_DIR/ChinaList.txt $CHINALIST && echo '	ChinaList Updated. ' || echo '	Download ChinaList Fail. '
 	rm -f $TMP_DIR/ChinaList.txt
+
+	echo 'ChinaDomainList Updating...'
+	cp $CHINADOMAINLIST $LIST_DIR/ChinaDomainList.backup
+	wget --no-check-certificate -b -q -P $TMP_DIR $CHINADOMAINLIST_URL -O ChinaDomainList.txt
+	[ -e $TMP_DIR/ChinaDomainList.txt ] && cp $TMP_DIR/ChinaDomainList.txt $CHINADOMAINLIST && echo '	ChinaDomainList Updated. ' || echo '	Download ChinaDomainList Fail. '
+	rm -f $TMP_DIR/ChinaDomainList.txt
 }
 
 update_ipsetrules () {

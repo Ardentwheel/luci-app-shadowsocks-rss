@@ -60,7 +60,7 @@ basic.anonymous = true
 basic:tab("general", translate("General Settings"))
 basic:tab("dns_page", translate("DNS"))
 basic:tab("advanced", translate("Advanced Settings"))
-basic:tab("ipset", translate("ipset Settings"))
+basic:tab("ipset", translate("ipset List"))
 
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
@@ -75,7 +75,7 @@ fast_open = basic:taboption("general", Flag, "fast_open", translate("TCP Fast Op
 	translate("IPv4 support needs Liunx version newer than 3.7. IPv6 TFO support needs Liunx version newer than 3.16."))
 fast_open.rmempty = false
 
-proxy_mod = basic:taboption("general", ListValue, "proxy_mod", translate("Proxy Mod"))
+proxy_mod = basic:taboption("general", ListValue, "proxy_mod", translate("Proxy Mode"))
 proxy_mod:value("G", "GFW List")
 proxy_mod:value("C", "Other Than China")
 proxy_mod:value("A", "All Public IP address")
@@ -92,7 +92,7 @@ server_port.default = "443"
 server_port.datatype = "port"
 server_port.rmempty = false
 
-local_port = basic:taboption("general", Value, "local_port", translate("Local Port"))
+local_port = basic:taboption("general", Value, "local_port", translate("Listening Port"))
 local_port.default = "1080"
 local_port.datatype = "port"
 local_port.rmempty = false
@@ -149,14 +149,14 @@ timeout.rmempty = false
 -- DNS
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
-dns_server = basic:taboption("dns_page", ListValue, "dns_server", translate("DNS Server"), translate("System Default：Besure your system DNS is clean. "))
+dns_server = basic:taboption("dns_page", ListValue, "dns_server", translate("DNS Server"), translate("System Default：Be sure your system DNS is clean. "))
 dns_server:value("T", "Shadowsocks Tunnel")
 dns_server:value("O", "Other DNS Server")
 dns_server:value("N", "System Default")
 dns_server.default = "T"
 dns_server.rmempty = false
 
-with_tunnel = basic:taboption("dns_page", Flag, "with_tunnel", translate("Shadowsocks Tunnel"), translate(""))
+with_tunnel = basic:taboption("dns_page", Flag, "with_tunnel", translate("Shadowsocks Tunnel"), translate("Enable Shadowsocks Tunnel also. "))
 with_tunnel.default = "0"
 with_tunnel:depends("dns_server", "O")
 
@@ -166,7 +166,7 @@ tunnel_port.datatype = "port"
 tunnel_port:depends("dns_server", "T")
 tunnel_port:depends("with_tunnel", "1")
 
-dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("DNS Address"), translate("Tunnel Listening DNS Address (IP:port)"))
+dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("Tunnel Upstream DNS"), translate("Tunnel Listening DNS Address " .. " (IP:port)"))
 dns_server_addr:value("8.8.8.8:53")
 dns_server_addr:value("8.8.4.4:53")
 dns_server_addr:value("208.67.220.220:443")
@@ -175,22 +175,17 @@ dns_server_addr.default = "8.8.8.8:53"
 dns_server_addr:depends("dns_server", "T")
 dns_server_addr:depends("with_tunnel", "1")
 
-other_dns_overall = basic:taboption("dns_page", Flag, "other_dns_overall", translate("Overall Upstream DNS"), translate("All request will handed over to the DNS set below. "))
+other_dns_overall = basic:taboption("dns_page", Flag, "other_dns_overall", translate("Overall Upstream DNS"), translate("All DNS request will handed over to the DNS set below. "))
 other_dns_overall.default = "0"
 other_dns_overall:depends("dns_server", "O")
 
-other_dns = basic:taboption("dns_page", Value, "other_dns", translate("Other DNS Server"), translate("Default:Only the domain mach GFWList will be handed over to the DNS set above. IP#port"))
+other_dns = basic:taboption("dns_page", Value, "other_dns", translate("Other DNS Server"), translate("Proxy Mode(GFW List):Only the domain mach GFWList will be handed over to the DNS set above." .. 
+	"Proxy Mode(Other Than China):Only the domain mach GFWList will be handed over to the DNS set above." .. 
+	"Proxy Mode(All Public IP address):Only the domain mach GFWList will be handed over to the DNS set above." .. 
+	" (IP#port)"))
 other_dns:value("127.0.0.1#1053")
 other_dns.default = "127.0.0.1#1053"
 other_dns:depends("dns_server", "O")
-
-dns_server_addr = basic:taboption("dns_page", Value, "dns_server_addr", translate("DNS Address"), translate("Tunnel Listening DNS Address (IP:port)"))
-dns_server_addr:value("8.8.8.8:53")
-dns_server_addr:value("8.8.4.4:53")
-dns_server_addr:value("208.67.220.220:443")
-dns_server_addr:value("208.67.222.222:5353")
-dns_server_addr.default = "8.8.8.8:53"
-dns_server_addr:depends("dns_server", "T")
 
 dns_cache = basic:taboption("dns_page", Value, "dns_cache", translate("DNS Cache Max Quantity"))
 dns_cache:value("150")
@@ -215,48 +210,48 @@ dns_cache_ttl.rmempty = false
 -- Advanced Settings
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
-random_port = basic:taboption("advanced", Flag, "random_port", translate("Enable Random Port"),
+random_port = basic:taboption("advanced", Flag, "random_port", translate("Random Port"),
 	translate("Need Server Support"))
 random_port.rmempty = false
 
-random_port_A = basic:taboption("advanced", Value, "random_port_A", translate("Local Mod Port"))
+random_port_A = basic:taboption("advanced", Value, "random_port_A", translate("Starting Port"))
 random_port_A.datatype = "port"
 random_port_A:depends("random_port", "1")
 
-random_port_O = basic:taboption("advanced", Value, "random_port_O", translate("Local Mod Port"))
+random_port_O = basic:taboption("advanced", Value, "random_port_O", translate("Ending Port"))
 random_port_O.datatype = "port"
 random_port_O:depends("random_port", "1")
 
-ss_local = basic:taboption("advanced", Flag, "ss_local", translate("Enable Local Mod"))
+ss_local = basic:taboption("advanced", Flag, "ss_local", translate("SSR-Local Mod"))
 ss_local.rmempty = false
 
-ss_local_listen = basic:taboption("advanced", Value, "ss_local_listen", translate("Server Listening Address"))
+ss_local_listen = basic:taboption("advanced", Value, "ss_local_listen", translate("Listening Address"))
 ss_local_listen:value("0.0.0.0")
 ss_local_listen:value("127.0.0.1")
 ss_local_listen.default = "0.0.0.0"
 ss_local_listen.datatype = "ipaddr"
 ss_local_listen:depends("ss_server", "1")
 
-ss_local_port = basic:taboption("advanced", Value, "ss_local_port", translate("Local Mod Port"))
+ss_local_port = basic:taboption("advanced", Value, "ss_local_port", translate("Port"))
 ss_local_port.default = "1085"
 ss_local_port.datatype = "port"
 ss_local_port:depends("ss_local", "1")
 
-ss_server = basic:taboption("advanced", Flag, "ss_server", translate("Enable Server Mod"))
+ss_server = basic:taboption("advanced", Flag, "ss_server", translate("SSR-Server Mod"))
 ss_server.rmempty = false
 
 ss_srv_fastopen = basic:taboption("advanced", Flag, "ss_srv_fastopen", translate("TCP Fast Open"),
 	translate("IPv4 support needs Liunx version newer than 3.7. IPv6 TFO support needs Liunx version newer than 3.16."))
 ss_srv_fastopen:depends("ss_server", "1")
 
-ss_srv_listen = basic:taboption("advanced", Value, "ss_srv_listen", translate("Server Listening Address"))
+ss_srv_listen = basic:taboption("advanced", Value, "ss_srv_listen", translate("Listening Address"))
 ss_srv_listen:value("0.0.0.0")
 ss_srv_listen:value("127.0.0.1")
 ss_srv_listen.default = "0.0.0.0"
 ss_srv_listen.datatype = "ipaddr"
 ss_srv_listen:depends("ss_server", "1")
 
-ss_srv_port = basic:taboption("advanced", Value, "ss_srv_port", translate("Server Mod Port"))
+ss_srv_port = basic:taboption("advanced", Value, "ss_srv_port", translate("Port"))
 ss_srv_port.default = "1090"
 ss_srv_port.datatype = "port"
 ss_srv_port:depends("ss_server", "1")
@@ -268,6 +263,7 @@ ss_srv_pwd.password = true
 
 srv_one_auth = basic:taboption("advanced", Flag, "srv_one_auth", translate("Onetime Authentication"),
 	translate(""))
+srv_one_auth:depends("ss_server", "1")
 
 ss_srv_method = basic:taboption("advanced", ListValue, "ss_srv_method", translate("Encryption Method"))
 for _, value in ipairs(method_list) do ss_srv_method:value(value) end
@@ -303,7 +299,7 @@ ss_srv_obfs:value("tls1.0_session_auth")
 ss_srv_obfs:value("tls1.0_session_auth_compatible")
 ss_srv_obfs:value("tls1.2_ticket_auth")
 ss_srv_obfs:value("tls1.2_ticket_auth_compatible")
-ss_srv_obfs. = "plain"
+ss_srv_obfs.default = "plain"
 ss_srv_obfs:depends("ss_server", "1")
 
 ss_srv_obfs_param = basic:taboption("advanced", Value, "ss_srv_obfs_param", translate("Obfs Param"))
@@ -331,8 +327,8 @@ ss_srv_timeout:depends("ss_server", "1")
 ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    ---------    
 
 
-button_update_list = basic: taboption ("ipset", Button, "_button_update_list", "GFWList update") 
-button_update_list.inputtitle = translate ( "Update GFWList Rules")
+button_update_list = basic: taboption ("ipset", Button, "_button_update_list", "List Update") 
+button_update_list.inputtitle = translate ( "Update")
 button_update_list.inputstyle = "apply" 
 function button_update_list.write (self, section, value)
 	luci.sys.call ( "/etc/init.d/shadowsocks-rss.sh update_list")

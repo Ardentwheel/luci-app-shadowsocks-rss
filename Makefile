@@ -7,6 +7,7 @@ PKG_NAME:=luci-app-shadowsocks-rss
 PKG_VERSION:= 1.0
 PKG_RELEASE:= 1.0
 
+#PO2LMO:=./bin/po2lmo
 include $(INCLUDE_DIR)/package.mk
 
 define Package/luci-app-shadowsocks-rss
@@ -81,6 +82,10 @@ define Package/luci-app-shadowsocks-rss/install
 	
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi
 	$(INSTALL_DATA) ./files/usr/model/shadowsocks-rss.lua $(1)/usr/lib/lua/luci/model/cbi/shadowsocks-rss.lua
+	
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
+#	$(INSTALL_DATA) ./files/usr/i18n/shadowsocks-rss.lmo $(1)/usr/lib/lua/luci/i18n/shadowsocks-rss.lmo
+#	$(PO2LMO) ./po/zh-cn/shadowsocks-rss.po $(1)/usr/lib/lua/luci/i18n/shadowsocks-rss.lmo
 endef
 
 
