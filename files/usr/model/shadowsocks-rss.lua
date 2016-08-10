@@ -190,8 +190,9 @@ other_dns:depends("dns_server", "O")
 dns_cache = basic:taboption("dns_page", Value, "dns_cache", translate("DNS Cache Max Quantity"))
 dns_cache:value("150")
 dns_cache:value("300")
+dns_cache:value("600")
 dns_cache:value("900")
-dns_cache.default = "300"
+dns_cache.default = "600"
 dns_cache.rmempty = false
 
 dns_cache_ttl = basic:taboption("dns_page", Value, "dns_cache_ttl", translate("DNS Cache Timeout"))

@@ -46,7 +46,8 @@ CHINADOMAINLIST="$LIST_DIR/ChinaDomainList"
 BYPASSLIST="$LIST_DIR/BypassList"
 GFWLIST_URL="https://raw.githubusercontent.com/wongsyrone/domain-block-list/master/domains.txt"
 CHINALIST_URL="http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
-CHINADOMAINLIST_URL="https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/master/accelerated-domains.china.conf"
+CHINACDNLIST_URL="https://raw.githubusercontent.com/mawenjian/china-cdn-domain-whitelist/master/china-cdn-domain-whitelist.txt"
+CHINADOMAINLIST_URL="https://github.com/mawenjian/china-cdn-domain-whitelist/raw/master/china-top-website-whitelist.txt"
 
 dns_sequence () {
 	case $DNS_SERVER in
@@ -56,11 +57,12 @@ dns_sequence () {
 		sed -i -e "/cache-size=/d" \
 			-e "/min-cache-ttl=/d" \
 			-e "/no-resolv/d" \
+			-e "/no-poll/d" \
 			-e "/server=/d" $DNSMASQ_CONF
 		echo "cache-size=$DNSMASQ_CACHE" >> $DNSMASQ_CONF
 		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> $DNSMASQ_CONF
-		awk -vs="$TUNNEL_ADDR" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-			$GFWLIST > $DNSMASQ_SERVER
+		awk -vs="$TUNNEL_ADDR" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' $GFWLIST > $DNSMASQ_SERVER
+		awk -vs="$TUNNEL_ADDR" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' $USER_LIST >> $DNSMASQ_SERVER
 		}
 	[ $PROXY_MOD == C ] && {
 		sed -i -e "/cache-size=/d" \
@@ -70,11 +72,14 @@ dns_sequence () {
 		echo "cache-size=$DNSMASQ_CACHE" >> $DNSMASQ_CONF
 		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> $DNSMASQ_CONF
 		echo "no-resolv" >> $DNSMASQ_CONF
+		echo "no-poll" >> $DNSMASQ_CONF
 		echo "server=$TUNNEL_ADDR" >> $DNSMASQ_CONF
 
-		[ "awk '/^nameserver/{print $2}' /etc/resolv.conf" == "127.0.0.1" ] && DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf" || DNS_RESOLV="114.114.114.114"
-		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-			$CHINALIST > $DNSMASQ_SERVER
+		[ "awk '/^nameserver/{print $2}' /tmp/resolv.conf.auto" == "127.0.0.1" ] && { 
+			DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf"
+			ipset add BypassList $DNS_RESOLV 
+			} || DNS_RESOLV="114.114.114.114"
+			awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' $CHINADOMAINLIST > $DNSMASQ_SERVER
 			}
 	[ $PROXY_MOD == A ] && {
 			sed -i -e "/cache-size=/d" \
@@ -83,6 +88,7 @@ dns_sequence () {
 				-e "/server=/d" $DNSMASQ_CONF
 		echo "cache-size=$DNSMASQ_CACHE" >> $DNSMASQ_CONF
 		echo "no-resolv" >> $DNSMASQ_CONF
+		echo "no-poll" >> $DNSMASQ_CONF
 		echo "server=$TUNNEL_ADDR" >> $DNSMASQ_CONF
 		}
 	;;
@@ -97,6 +103,7 @@ dns_sequence () {
 		echo "cache-size=$DNSMASQ_CACHE" >> $DNSMASQ_CONF
 		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> $DNSMASQ_CONF
 		echo "no-resolv" >> $DNSMASQ_CONF
+		echo "no-poll" >> $DNSMASQ_CONF
 		echo "server=$OTHER_DNS" >> $DNSMASQ_CONF
 	else
 		[ $PROXY_MOD == G ] && {
@@ -118,11 +125,14 @@ dns_sequence () {
 		echo "cache-size=$DNSMASQ_CACHE" >> $DNSMASQ_CONF
 		echo "min-cache-ttl=$DNSMASQ_CACHE_TTL" >> $DNSMASQ_CONF
 		echo "no-resolv" >> $DNSMASQ_CONF
+		echo "no-poll" >> $DNSMASQ_CONF
 		echo "server=$OTHER_DNS" >> $DNSMASQ_CONF
 
-		[ "awk '/^nameserver/{print $2}' /etc/resolv.conf" == "127.0.0.1" ] && DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf" || DNS_RESOLV="114.114.114.114"
-		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' \
-			$CHINALIST > $DNSMASQ_SERVER
+		[ "awk '/^nameserver/{print $2}' /tmp/resolv.conf.auto" == "127.0.0.1" ] && { 
+			DNS_RESOLV="awk '/^nameserver/{print $2}' /etc/resolv.conf"
+			ipset add BypassList $DNS_RESOLV 
+			} || DNS_RESOLV="114.114.114.114"
+		awk -vs="$DNS_RESOLV" '!/^$/&&!/^#/{printf("server=/%s/%s\n",$0,s)}' $CHINADOMAINLIST > $DNSMASQ_SERVER
 		}
 	fi
 	;;
@@ -142,21 +152,27 @@ ipset_sequence() {
 	G)
 #	GFW List
 	awk '!/^$/&&!/^#/{printf("add BypassList %s''\n",$0)}' $BYPASSLIST > $TMP_DIR/BypassList.ipset
-	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $GFWLIST > $DNSMASQ_IPSET
-	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist"'\n",$0)}' $USER_LIST >> $DNSMASQ_IPSET
+	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist,gfwlist6"'\n",$0)}' $GFWLIST > $DNSMASQ_IPSET
+	awk '!/^$/&&!/^#/{printf("ipset=/.%s/'"gfwlist,gfwlist6"'\n",$0)}' $USER_LIST >> $DNSMASQ_IPSET
 	ipset create gfwlist hash:ip -!
 	ipset flush gfwlist -!
 	ipset create BypassList hash:net -!
 	ipset flush BypassList -!
 	ipset restore -f $TMP_DIR/BypassList.ipset
+	ipset create gfwlist6 hash:ip family inet6 -!
+	ipset flush gfwlist6 -!
 
 	# Create new chain
 	iptables -t nat -N SHADOWSOCKS
 	iptables -t mangle -N SHADOWSOCKS
-
 	iptables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set BypassList dst -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $LOCAL_PORT
+	iptables -t nat -A SHADOWSOCKS -p udp -m set --match-set gfwlist dst -j REDIRECT --to-ports $LOCAL_PORT
+	
+	# ip6tables -t nat -N SHADOWSOCKS
+	# ip6tables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
+	# ip6tables -t nat -A SHADOWSOCKS -p tcp -m set --match-set gfwlist6 dst -j REDIRECT --to-ports $LOCAL_PORT
 
 	# Add any UDP rules
 	# ip rule add fwmark 0x01/0x01 table 100
@@ -165,8 +181,11 @@ ipset_sequence() {
 
 	# Apply the rules
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
-	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
+	iptables -t nat -A PREROUTING -p udp -j SHADOWSOCKS
+	ip6tables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
 	# iptables -t nat -A OUTPUT -j SHADOWSOCKS
+	# ip6tables -t nat -A PREROUTING -p tcp -m set --match-set gfwlist6 dst -j REDIRECT --to-ports 1080
+	
 	;;
 	C)
 #	ALL the IP address not China
@@ -180,7 +199,6 @@ ipset_sequence() {
 	ipset restore -f $TMP_DIR/RETURN.ipset
 
 	iptables -t nat -N SHADOWSOCKS
-	iptables -t mangle -N SHADOWSOCKS
 
 	iptables -t nat -A SHADOWSOCKS -d $SERVER_ADDR -j RETURN
 	iptables -t nat -A SHADOWSOCKS -p tcp -m set --match-set BypassList dst -j RETURN
@@ -188,7 +206,6 @@ ipset_sequence() {
 	iptables -t nat -A SHADOWSOCKS -p tcp -j REDIRECT --to-ports $LOCAL_PORT
 
 	iptables -t nat -A PREROUTING -p tcp -j SHADOWSOCKS
-	iptables -t mangle -A PREROUTING -j SHADOWSOCKS
 	;;
 	A)
 #	All Public IP address
@@ -263,9 +280,9 @@ ssr_tunnel() {
 	config_get dns_server_addr $1 dns_server_addr
 
 	sleep 1
-	service_start $PRG_TUNNEL -c $TMP_REDIR -b 0.0.0.0 -l $tunnel_port -L $dns_server_addr -u -f $PRG_TUNNEL 2>/dev/null
+	service_start $PRG_TUNNEL -c $TMP_REDIR -b 0.0.0.0 -l $tunnel_port -L $dns_server_addr -u -f $PID_TUNNEL 2>/dev/null
 
-	echo -e '	SSR-Redir		\033[40;32;1m Loaded \033[0m '
+	echo -e '	SSR-Tunnel		\033[40;32;1m Loaded \033[0m '
 }
 
 ssr_server() {
@@ -434,27 +451,24 @@ ssr_header() {
 	[ $other_dns_overall ] && DNS_OVERALL=$other_dns_overall
 	
 	if [ $fast_open -a $fast_open == 1 ]
-	then FAST_OPEN="true"
+	then
+		FAST_OPEN="true"
+		[[ `grep -qc "net.ipv4.tcp_fastopen" /etc/sysctl.conf` -eq 0 ]] && echo "net.ipv4.tcp_fastopen=3" >> /etc/sysctl.conf
 	else 
 		FAST_OPEN="false"
 		$fast_open=0
 	fi
 
 	if [ $ss_srv_fastopen -a $ss_srv_fastopen == 1 ]
-	then SRV_FAST_OPEN="true"
+	then
+		SRV_FAST_OPEN="true"
+		[[ `grep -qc "net.ipv4.tcp_fastopen" /etc/sysctl.conf` -eq 0 ]] && echo "net.ipv4.tcp_fastopen=3" >> /etc/sysctl.conf
 	else 
 		SRV_FAST_OPEN="false"
 		$ss_srv_fastopen=0
 	fi
-
-	if [ $fast_open == 1 -o $ss_srv_fastopen == 1 ] 
-	then
-		FAST_OPEN="true"
-		sed -i "/net.ipv4.tcp_fastopen/d" /etc/sysctl.conf
-		echo "net.ipv4.tcp_fastopen=3" >> /etc/sysctl.conf
-	else
-	FAST_OPEN="false"
-	fi
+	
+	sysctl -p
 }
 
 switches () {
@@ -662,7 +676,7 @@ update_list() {
 	echo 'GFWList Updating...'
 	cp $GFWLIST $LIST_DIR/GFWList.backup
 
-	wget --no-check-certificate -b -q -P $TMP_DIR $GFWLIST_URL
+	wget --no-check-certificate -q -P $TMP_DIR $GFWLIST_URL
 	[ -e $TMP_DIR/domains.txt ] && cp $TMP_DIR/domains.txt $GFWLIST && echo '	GFWList Updated. '|| echo '	Download GFWList Fail. '
 	rm -f $TMP_DIR/domains.txt
 	echo ''
@@ -676,8 +690,13 @@ update_list() {
 
 	echo 'ChinaDomainList Updating...'
 	cp $CHINADOMAINLIST $LIST_DIR/ChinaDomainList.backup
-	wget --no-check-certificate -b -q -P $TMP_DIR $CHINADOMAINLIST_URL -O ChinaDomainList.txt
-	[ -e $TMP_DIR/ChinaDomainList.txt ] && cp $TMP_DIR/ChinaDomainList.txt $CHINADOMAINLIST && echo '	ChinaDomainList Updated. ' || echo '	Download ChinaDomainList Fail. '
+	
+	wget --no-check-certificate -q -P $TMP_DIR $CHINACDNLIST_URL -O ChinaCDNList.txt
+	wget --no-check-certificate -q -P $TMP_DIR $CHINADOMAINLIST_URL -O ChinaDomainList.txt
+	
+	cat $TMP_DIR/ChinaCDNList.txt $TMP_DIR/ChinaDomainList.txt > $TMP_DIR/ChinaDomainList-tmp.txt
+	
+	[ -e $TMP_DIR/ChinaDomainList.txt ] && cp $TMP_DIR/ChinaDomainList-tmp.txt $CHINADOMAINLIST && echo '	ChinaDomainList Updated. ' || echo '	Download ChinaDomainList Fail. '
 	rm -f $TMP_DIR/ChinaDomainList.txt
 }
 
